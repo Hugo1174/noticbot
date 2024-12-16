@@ -45,7 +45,6 @@ async def process_start_cmd(message : Message, bot : Bot, state : FSMContext):
     # ищем юзера и запоминаем
     # подключаем базу данных
     db_user = await database.get_user(user_id)
-    print(db_user)
     # если юзера нет
     if db_user == None:
         # проверяем на админа

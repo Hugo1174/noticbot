@@ -12,9 +12,13 @@ load_dotenv(find_dotenv())
 
 from handlers.registration_private import registration_private_router
 from handlers.admin_private import admin_private_router
+from handlers.main_private import main_private_router, create_task
+
 from common.bot_cmds_list import private
 
 from db.users_db import Database
+
+
 
 
 BOT_TOKEN = os.getenv('TOKEN')# токен бота
@@ -36,6 +40,7 @@ dp.include_router(admin_private_router)
 async def main():
     try:
         await database.create_database()
+        asyncio.create_task(send_notifications())
         # удалить меню
         #await bot.delete_my_commands(scope=BotCommandScopeAllPrivateChats())
         # создать меню
