@@ -12,7 +12,7 @@ load_dotenv(find_dotenv())
 
 from handlers.registration_private import registration_private_router
 from handlers.admin_private import admin_private_router
-from handlers.main_private import main_private_router, create_task
+from handlers.headman_main_private import headman_private_router, send_notifications
 
 from common.bot_cmds_list import private
 

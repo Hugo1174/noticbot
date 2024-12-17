@@ -1,32 +1,35 @@
 import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram import Bot, F, Router, types
+from aiogram.filters import Command, CommandStart, StateFilter
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
+
 import datetime
+
+from kbds import reply
+
+from db.users_db import Database
 
 #обработчик
 main_private_router = Router()
 
 # Словарь для хранения событий по группам
-group_events = {}
+#group_events = {}
 # Словарь для хранения ID пользователей
-users = set()
+#users = set()
 # Словарь для отслеживания выбранной группы для каждого пользователя
-user_selected_group = {}
+#user_selected_group = {}
 
 # Меню для добавления события
-add_event_menu = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="➕ Добавить дату")],
-        [KeyboardButton(text="📅 Просмотр всех дат")],
-        [KeyboardButton(text="⏳ Ближайшая дата")],
-        [KeyboardButton(text="🚪 Выйти из группы")]
-    ],
-    resize_keyboard=True
+USER_KB = reply.get_keyboard(
+        '📅 Просмотр всех дат',
+        '⏳ Ближайшая дата',
+        placeholder='выберите действие',
+        sizes=(2,),
 )
+
 
 # Состояния
 class GroupStates(StatesGroup):
