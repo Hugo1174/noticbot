@@ -1,7 +1,6 @@
 import aiosqlite
 
 
-
 # класс для работы с бд
 class Database:
     def __init__(self, db_name='bot_db.db'):
@@ -25,7 +24,8 @@ class Database:
                              FOREIGN KEY(group_id) REFERENCES Groups(group_id)
                              )
                              ''')
-            
+            await db.commit()
+
             # создаём groups
             await db.execute('''
                             CREATE TABLE IF NOT EXISTS Groups(
@@ -35,31 +35,30 @@ class Database:
                              FOREIGN KEY (headman_id) REFERENCES Users(user_id)
                              )
                              ''')
+            await db.commit()
 
             # Создаем assignments
             # изменить. Дату надо сохранять числом или строкой
             await db.execute('''
-            CREATE TABLE IF NOT EXISTS Assignments (
-                assignment_id INTEGER PRIMARY KEY,
-                group_id INTEGER NOT NULL,
-                title TEXT NOT NULL,
-                due_date DATE NOT NULL,
-                description TEXT,
-                created_by INTEGER NOT NULL,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (group_id) REFERENCES Groups(group_id),
-                FOREIGN KEY (created_by) REFERENCES Users(user_id)
-            )
-            ''')
+                            CREATE TABLE IF NOT EXISTS Assignments (
+                            assignment_id INTEGER PRIMARY KEY,
+                            group_id INTEGER NOT NULL,
+                            title TEXT NOT NULL,
+                            due_date DATETIME NOT NULL,
+                            description TEXT,
+                            FOREIGN KEY (group_id) REFERENCES Groups(group_id)
+                        )
+                        ''')
+            await db.commit()
 
             # Создаем таблицу Tokens
             await db.execute('''
-            CREATE TABLE IF NOT EXISTS Tokens (
-                token_id INTEGER PRIMARY KEY,
-                token TEXT UNIQUE NOT NULL,
-                is_used BOOLEAN DEFAULT FALSE
-            )
-            ''')
+                            CREATE TABLE IF NOT EXISTS Tokens (
+                            token_id INTEGER PRIMARY KEY,
+                            token TEXT UNIQUE NOT NULL,
+                            is_used BOOLEAN DEFAULT FALSE
+                        )
+                        ''')
 
             # Сохраняем изменения в базе данных
             await db.commit()
@@ -84,6 +83,25 @@ class Database:
                                       (str(telegram_id),))
             return await cursor.fetchone()
     
+    # поиск пользователей по группе
+    async def search_user_by_group(self, group_id):
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute("SELECT * FROM Users WHERE group_id= ?", \
+                                      (int(group_id),))
+            rows = await cursor.fetchall()
+        
+            #Преобразуем результаты в список словарей
+            users = []
+            for row in rows:
+                user = {
+                    "user_name": row[2],
+                    "telegram_id": row[1]
+               }
+                users.append(user)
+        
+            return users
+
+
     # изменяем роль
     async def change_role(self, role, user_id):
         async with aiosqlite.connect(self.db_name) as db:
@@ -95,7 +113,6 @@ class Database:
             except Exception as e:
                 print(f"Error adding user: {e}")
 
-    # дописать
     # создание группы
     async def add_group(self, group, id):
         async with aiosqlite.connect(self.db_name) as db:
@@ -113,9 +130,9 @@ class Database:
             return await cursor.fetchone()
         
     # возврат групп    
-    async def return_groups(self):
+    async def return_group(self, group_id):
         async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute("SELECT * FROM Groups")
+            cursor = await db.execute("SELECT * FROM Groups WHERE group_if = ?", (int(group_id),))
             return await cursor.fetchone()   
         
     # удаление группы    
@@ -124,7 +141,59 @@ class Database:
             await db.execute("DELETE FROM Groups WHERE group_name = ?", (str(group_name),))
             await db.commit
     
+    # добавление события
+    async def add_assignment(self, group_id, title, due_date, description):
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.execute('''
+                INSERT INTO Assignments (group_id, title, due_date, description)
+                VALUES (?, ?, ?, ?)
+            ''', (group_id, title, due_date, description))
+            await db.commit()
 
+    # возвращает все события группы
+    async def get_asignment(self, group_id):
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute("SELECT * FROM Assignments WHERE group_id= ?", \
+                                      (int(group_id),))
+            rows = await cursor.fetchall()
+        
+            #Преобразуем результаты в список словарей
+            events = []
+            for row in rows:
+                event = {
+                    "assignment_id": row[0],
+                    "group_id": row[1],
+                    "title": row[2],
+                    "due_date": row[3],
+                    "description": row[4]
+               }
+                events.append(event)
+        
+            return events
+        
+    # возвращает события по дате
+    async def get_events_by_date(self, search_date):
+        async with aiosqlite.connect(self.db_name) as db:
+            # Используем strftime для фильтрации по дате
+            cursor = await db.execute('''
+                SELECT * FROM Assignments 
+                WHERE DATE(due_date) = ?
+            ''', (search_date,))
+
+            rows = await cursor.fetchall()
+
+            # Преобразуем результаты в список словарей
+            events = []
+            for row in rows:
+                event = {
+                    "group_id": row[1],
+                    "title": row[2],
+                    "due_date": row[3],  # Это будет строка в формате 'YYYY-MM-DD HH:MM:SS'
+                    "description": row[4]
+                }
+                events.append(event)
+
+            return events
 
     # добавление токена
     async def add_token(self, token):

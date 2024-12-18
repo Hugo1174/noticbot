@@ -159,7 +159,7 @@ async def process_get_token(message : Message, state : FSMContext):
         f'{message.text}\n'
         'Попроси у него токен и введи его сюда.'
     )
-    state.set_state(Registration.token)
+    await state.set_state(Registration.token)
 
 
 @registration_private_router.message(Registration.token, F.text)
