@@ -36,22 +36,32 @@ ADMIN_KB = reply.get_keyboard(
 '''
 
 class Delete(StatesGroup):
+    faculty = State()
     group = State()
 
-@admin_private_router.message(StateFilter(None), F.text == 'анигиляция')
+@admin_private_router.message(StateFilter(None), F.text == 'аннигиляция')
 async def process_delete_group(message : Message, state : FSMContext):
-    await message.answer('Введите название группы')
+    await message.answer('Введите факультет', reply_markup=None)
+    await state.set_state(Delete.faculty)
+
+@admin_private_router.message(Delete.faculty, F.text)
+async def process_delete_group(message : Message, state : FSMContext):
+    await state.update_data(faculty = message.text.casefold())
+    await message.answer('Введите группу')
     await state.set_state(Delete.group)
 
-@admin_private_router.message(Delete.group)
+@admin_private_router.message(Delete.group, F.text)
 async def process_search_group(message : Message, state : FSMContext):
-    await state.update_data(group = message.text)
-    group = await database.search_group(message.text.casefold())
+    await state.update_data(group = message.text.casefold())
+    state_data = await state.get_data()
+    faculty = state_data.get('faculty')
+    group =  state_data.get('group')
+    group = await database.search_group(faculty, group)
     if group != None:
-        await database.delete_group(group[1])
-        await message.answer('Группа успешно удалена')
+        await database.delete_group(faculty, group)
+        await message.answer('Группа успешно удалена', reply_markup=ADMIN_KB)
     else:
-        await message.answer('Звиняй, не нашёл группу')
+        await message.answer('Звиняй, не нашёл группу', reply_markup=ADMIN_KB)
     await state.clear()
 
     
@@ -61,12 +71,12 @@ async def process_check_group(message : Message):
     if groups != None:
         line = ''
         for group in groups:
-            line += ('/n' + group[1])
+            line += ('/n' + group[1] + group[2])
         await message.answer(
-            f'Вот список все групп:{line}'
+            f'Вот список все групп:{line}', reply_markup=ADMIN_KB
         )
     else:
-        await message.answer('Групп нет')   
+        await message.answer('Групп нет', reply_markup=ADMIN_KB)   
 
 
 
@@ -75,12 +85,12 @@ async def process_delete_group(message : Message):
     active = await database.number()
     await message.answer(f'Всего в боте:\n'
                          f'\tПользователей - {active[0]}\n'
-                         f'\tГрупп - {active[1]}')
+                         f'\tГрупп - {active[1]}', reply_markup=ADMIN_KB)
 
 
 @admin_private_router.message(F.text == 'токен')
 async def process_generate_token(message : Message):
     token = secrets.token_urlsafe(16)
-    await message.answer('Вот токен для старосты')
+    await message.answer('Вот токен для старосты', reply_markup=ADMIN_KB)
     await message.answer(token)
     await database.add_token(token) 

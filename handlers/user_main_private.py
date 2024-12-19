@@ -18,7 +18,7 @@ USER_KB = reply.get_keyboard(
         '📅 Просмотр всех дат',
         '⏳ Ближайшая дата',
         placeholder='выберите действие',
-        sizes=(2,),
+        sizes=(1,2),
 )
 
 db = Database()
@@ -27,8 +27,10 @@ db = Database()
 @user_private_router.message(lambda message: message.text == "📅 Просмотр всех дат")
 async def view_all_dates(message: Message):
     user_id = message.from_user.id
-    group_id = await db.get_user(str(user_id))['group_id']
-    group_name = await db.return_group(int(group_id))['group_name']
+    group_id = await db.get_user(str(user_id))
+    group_id = group_id[4]
+    group_name = await db.return_group(int(group_id))
+    group_name = group_name[2]
     events = await db.get_asignment(int(group_id))
     if not events:
         await message.answer(f"В группе '{group_name}' событий пока нет.", reply_markup=USER_KB)
@@ -44,8 +46,10 @@ async def view_all_dates(message: Message):
 @user_private_router.message(lambda message: message.text == "⏳ Ближайшая дата")
 async def nearest_date(message: Message):
     user_id = message.from_user.id
-    group_id = await db.get_user(str(user_id))['group_id']
-    group_name = await db.return_group(int(group_id))['group_name']
+    group_id = await db.get_user(str(user_id))
+    group_id = group_id[4]
+    group_name = await db.return_group(int(group_id))
+    group_name = group_name[2]
     events = await db.get_asignment(int(group_id))
 
     if not events:
@@ -82,8 +86,8 @@ async def send_notifications(bot: Bot):
                 for user in users:
                     try:
                         await bot.send_message(
-                            user['user_id'], \
-                                f"{user['user_name']} напоминание: Завтра ({event['due_time']}) событие: {event['title']}'"
+                            user[0], \
+                                f"{user[2]} напоминание: Завтра ({event['due_time']}) событие: {event['title']}'"
                         )
                     except Exception as e:
                         print(f"Ошибка отправки уведомления: {e}")

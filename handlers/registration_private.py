@@ -24,17 +24,25 @@ ADMIN_KB = reply.get_keyboard(
         placeholder='выберите действие',
         sizes=(2,2),
 )
-
+# Меню для добавления события
+HEADMAN_KB = reply.get_keyboard(
+        '➕ Добавить дату',
+        '📅 Просмотр всех дат',
+        '⏳ Ближайшая дата',
+        placeholder='выберите действие',
+        sizes=(1,3),
+)
 USER_KB = reply.get_keyboard\
                 (
-                    "Задачи",
-                    "задача",
+                    '📅 Просмотр всех дат',
+                    '⏳ Ближайшая дата',
                     placeholder="список",
-                    sizes=(2,)
+                    sizes=(1,2)
                 )
 
 class Registration(StatesGroup):
     role = State()
+    faculty = State()
     group = State()
     token = State()
 
@@ -42,9 +50,11 @@ class Registration(StatesGroup):
 async def process_start_cmd(message : Message, bot : Bot, state : FSMContext):
     user_id =  message.from_user.id
     username = message.from_user.first_name
+    print(user_id, username)
     # ищем юзера и запоминаем
     # подключаем базу данных
     db_user = await database.get_user(user_id)
+    print(db_user)
     # если юзера нет
     if db_user == None:
         # проверяем на админа
@@ -62,7 +72,8 @@ async def process_start_cmd(message : Message, bot : Bot, state : FSMContext):
             (
                 f'Привет {username}!. Рады приветствовать в боте.\n'
                 'Чтобы продолжить регистрацию, укажи введи свою роль:\n'
-                '\t/student\n\t/headman'
+                '\t/student\n\t/headman',
+                reply_markup=None
             )
             await state.set_state(Registration.role)
     else:
@@ -78,8 +89,8 @@ async def process_start_cmd(message : Message, bot : Bot, state : FSMContext):
             )
         elif (db_user[3] == 'admin') and (str(user_id) not in bot.admin_list):
             await message.answer('Звиняй, ты был админом, но больше ты не нужен',
-                                 reply_markup=USER_KB)
-            await database.change_role('student', str(user_id))
+                                 reply_markup=None)
+            await database.delete_user(db_user[1])
         else:
             # админ
             await message.answer\
@@ -98,28 +109,72 @@ async def process_student_role(message : Message, state : FSMContext):
     await state.update_data(role="student")
     await message.answer\
         (
+            'Введите свой факультет'
+        )
+    await state.set_state(Registration.faculty)
+
+@registration_private_router.message(Registration.faculty, F.text)
+async def process_student_role(message : Message, state : FSMContext):
+    await state.update_data(faculty=message.text.casefold())
+    await message.answer\
+        (
             'Введите свою группу'
         )
     await state.set_state(Registration.group)
-
-
+    
 # поиск группы студента
 @registration_private_router.message(Registration.group, F.text)
 async def process_add_group(message : Message, state : FSMContext):
     # ищем группу в бд
     user_group = message.text.casefold()
-    group = await database.search_group(user_group)
-    data = await state.get_data()
-    # проверка на админа\
-    if data['role'] != 'headman':
+
+    await state.update_data(group=user_group)
+
+    state_data = await state.get_data()
+    faculty = state_data.get('faculty')
+    group = await database.search_group(faculty, user_group)
+    role = state_data.get('role')
+    print(user_group,faculty, group, role)
+    if not group:
         # если нашли уведомляем пользователя и добавляем в FSM
-        if group:
+        if role == 'headman':
+            await message.answer\
+                (
+                    f'Отлично!\n{message.from_user.username}, я создал группу!'
+                )
+            # добавляем юзера
+            await database.add_user(str(message.from_user.id), message.from_user.username, role)
+            headman_id = await database.get_user(str(message.from_user.id))
+            headman_id = headman_id[0]
+            await database.add_group(faculty, user_group, headman_id)
+            group_id = await database.search_group(faculty, user_group)
+            group_id = group_id[0]
+            await database.add_group_id_to_headman(headman_id, group_id)
+            await message.answer\
+                (
+                    'Теперь тебе доступны возможности бота.\n'
+                    'С помощью кнопок ниже можешь творить',
+                    reply_markup=HEADMAN_KB
+                )
+        else: 
+            await message.answer\
+            (
+                'Звиняй, что-то не так.\n'
+                'Возможно староста ещё не создал группу. Напиши ему!'
+            )
+        await state.clear()
+    
+    # проверка на старосту
+    if group:
+        group_id = group[0]
+        # если нашли уведомляем пользователя и добавляем в FSM
+        if role == 'student':
             await message.answer\
                 (
                     f'Отлично!\n{message.from_user.username}, я нашёл твою группу!'
                 )
             # добавляем юзера
-            await database.add_user(str(message.from_user.id), message.from_user.username, data['role'], user_group)
+            await database.add_user(str(message.from_user.id), message.from_user.username, role, group_id)
 
             await message.answer\
                 (
@@ -131,21 +186,10 @@ async def process_add_group(message : Message, state : FSMContext):
             await message.answer\
             (
                 'Звиняй, что-то не так.\n'
-                'Возможно староста ещё не создал группу. Напиши ему!'
+                'Возможно где-то ошибка!\n'
+                'Начать заново - /start'
             )
-    else:
-        if not group:
-            await message.answer\
-            (
-                'Звиняй, но такая группа уже есть.\n'
-                'Попробуй ввести ещё раз'
-            )
-            await state.set_state(Registration.group)
-            return
-        else:# дописать
-            await database.add_group()
-
-    await state.clear()
+        await state.clear()
 
 
     ''' для старосты '''
@@ -155,28 +199,81 @@ async def process_get_token(message : Message, state : FSMContext):
     await state.update_data(role = 'headman')
     await message.answer\
     (
-        f'{message.from_user.username}, для продолжения регистрации обратись к админу\n'
-        f'{message.text}\n'
+        f'{message.from_user.username}, для продолжения регистрации обратись к админу @scrooge79\n'
         'Попроси у него токен и введи его сюда.'
     )
     await state.set_state(Registration.token)
 
 
 @registration_private_router.message(Registration.token, F.text)
-async def process_headman_role(message : Message, state : FSMContext):
+async def process_headman_faculty(message : Message, state : FSMContext):
     await state.update_data(token=message.text)
     # ищем токен
     token = await database.search_token(message.text)
+    print(token)
     # если есть записываем старосту
-    if not token[1]:
-        await message.answer\
-        (
-            'Введите свою группу.'
-        )
-        await state.set_state(Registration.group)
+    if token:
+        if not token[2]:
+            await database.use_token(token[1])
+            await message.answer\
+            (
+                'Введите свой факультет.'
+            )
+            await state.set_state(Registration.faculty)
+            return
+        else:
+            await message.answer('Этот токен используется, введите новый')
     else:
-        await message.answer('Этот токен уже используется')
+        await message.answer('Этого токена нет, введите новый')
+    await state.set_state(Registration.token)
 
+@registration_private_router.message(Registration.group, F.text)
+async def process_group_registration(message : Message, state : FSMContext):    
+    # ищем группу в бд
+    user_group = message.text.casefold()
+
+    await state.set_state(group=user_group)
+
+    state_data = await state.get_data()
+    faculty = state_data.get('faculty')
+    group = await database.search_group(faculty, user_group)
+    role = state_data.get('role')
+    print(faculty, user_group, group, role)
+    # проверка на старосту
+    if role == 'headman':
+        # если нашли уведомляем пользователя и добавляем в FSM
+        if not group:
+            await message.answer\
+                (
+                    f'Отлично!\n{message.from_user.username}, я создал группу!'
+                )
+            # добавляем юзера
+            await database.add_user(str(message.from_user.id), message.from_user.username, role, user_group)
+            headman_id = await database.get_user(str(message.from_user.id))['id']
+            await database.add_group(faculty, user_group, headman_id)
+            await message.answer\
+                (
+                    'Теперь тебе доступны возможности бота.\n'
+                    'С помощью кнопок ниже можешь творить',
+                    reply_markup=HEADMAN_KB
+                )
+            
+        else: 
+            await message.answer\
+            (
+                'Звиняй, что-то не так.\n'
+                'Возможно где-то ошибка!'
+            )
+    else:
+        if group:
+            await message.answer\
+            (
+                'Звиняй, но такая группа уже есть.\n'
+            )
+            return
+            
+
+    await state.clear()
 
 
 

@@ -30,6 +30,7 @@ class Database:
             await db.execute('''
                             CREATE TABLE IF NOT EXISTS Groups(
                              group_id INTEGER PRIMARY KEY,
+                             faculty TEXT NOT NULL,
                              group_name TEXT NOT NULL,
                              headman_id INTEGER,
                              FOREIGN KEY (headman_id) REFERENCES Users(user_id)
@@ -76,6 +77,12 @@ class Database:
             except Exception as e:
                 print(f"Error adding user: {e}")
 
+    # удаление пользователя  
+    async def delete_user(self, telegram_id):
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.execute("DELETE FROM Users WHERE telegram_id = ?", (str(telegram_id),))
+            await db.commit()
+
     # получение инф-и о пользователе
     async def get_user(self, telegram_id):
         async with aiosqlite.connect(self.db_name) as db:
@@ -113,33 +120,50 @@ class Database:
             except Exception as e:
                 print(f"Error adding user: {e}")
 
+    # изменяем роль
+    async def add_group_id_to_headman(self, h_id, g_id):
+        async with aiosqlite.connect(self.db_name) as db:
+            try:
+                await db.execute('''UPDATE Users SET group_id = ? WHERE id = ?
+                             ''', (g_id, h_id)
+                             )
+                await db.commit()
+            except Exception as e:
+                print(f"Error adding user: {e}")
+
     # создание группы
-    async def add_group(self, group, id):
+    async def add_group(self, faculty, group, id):
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute('''
-                            INSERT INTO Groups(group_name, headman_id)
-                             VALUES(?, ?)
-                             ''', (str(group), id)
+                            INSERT INTO Groups(faculty, group_name, headman_id)
+                             VALUES(?, ?, ?)
+                             ''', (str(faculty), str(group), id)
                              )
-            await db.commit
+            await db.commit()
 
     # поиск группы
-    async def search_group(self, group_name):
+    async def search_group(self, faculty, group_name):
         async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute("SELECT * FROM Groups WHERE group_name = ?", (str(group_name),))
+            cursor = await db.execute("SELECT * FROM Groups WHERE group_name = ? AND faculty = ?", (str(faculty), str(group_name),))
             return await cursor.fetchone()
         
     # возврат групп    
-    async def return_group(self, group_id):
+    async def return_groups(self,):
         async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute("SELECT * FROM Groups WHERE group_if = ?", (int(group_id),))
-            return await cursor.fetchone()   
+            cursor = await db.execute("SELECT * FROM Groups")
+            return await cursor.fetchone()
+
+    # возврат группы    
+    async def return_group(self, id):
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute("SELECT * FROM Groups WHERE group_id = ?", (int(id), ))
+            return await cursor.fetchone()     
         
     # удаление группы    
-    async def delete_group(self, group_name):
+    async def delete_group(self, faculty, group_name):
         async with aiosqlite.connect(self.db_name) as db:
-            await db.execute("DELETE FROM Groups WHERE group_name = ?", (str(group_name),))
-            await db.commit
+            await db.execute("DELETE FROM Groups WHERE group_name = ? AND faculty = ?", (str(faculty), str(group_name),))
+            await db.commit()
     
     # добавление события
     async def add_assignment(self, group_id, title, due_date, description):
@@ -203,7 +227,15 @@ class Database:
                              VALUES(?, ?)
                              ''', (str(token), False)
                              )
-            await db.commit
+            await db.commit()
+
+    async def use_token(self, token):
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.execute('''
+                            UPDATE Tokens SET is_used = ? WHERE token = ?
+                             ''', (True, str(token))
+                             )
+            await db.commit()
 
     # поиск токена
     async def search_token(self, token):

@@ -24,5 +24,6 @@ class IsHeadman(Filter):
 
     async def __call__(self, message: types.Message) -> bool:
         db = Database()
-        headman = await db.get_user(str(message.from_user.id))['role']
+        headman = await db.get_user(str(message.from_user.id))
+        headman = headman[3]
         return headman == 'headman'
