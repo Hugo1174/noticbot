@@ -70,12 +70,13 @@ async def process_date(message: Message, state : FSMContext):
     time = state_info.get('time')+':00'
     due_data = f'{date} {time}'
     try:
-        due_date = datetime.datetime.strptime(due_date, "%Y-%m-%d %H:%M:%S")
-        event = state_info.get('event')
-        await message.answer(
-            f"Добавлено событие: {event} на дату {due_data}.",
-            reply_markup=HEADMAN_KB  # Меню для добавления событий
-        )
+        if due_data != None:
+            due_date = datetime.datetime.strptime(due_date, "%Y-%m-%d %H:%M:%S")
+            event = state_info.get('event')
+            await message.answer(
+                f"Добавлено событие: {event} на дату {due_data}.",
+                reply_markup=HEADMAN_KB  # Меню для добавления событий
+            )
         '''due_date.strftime('%Y-%m-%d)'''
     except ValueError:
         await message.answer(

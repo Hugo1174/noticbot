@@ -32,6 +32,7 @@ async def view_all_dates(message: Message):
     group_name = await db.return_group(int(group_id))
     group_name = group_name[2]
     events = await db.get_asignment(int(group_id))
+    print(group_id, group_name, events)
     if not events:
         await message.answer(f"В группе '{group_name}' событий пока нет.", reply_markup=USER_KB)
     else:
@@ -51,11 +52,12 @@ async def nearest_date(message: Message):
     group_name = await db.return_group(int(group_id))
     group_name = group_name[2]
     events = await db.get_asignment(int(group_id))
-
+    print(group_id, group_name, events)
     if not events:
         await message.answer(f"В группе '{group_name}' событий пока нет.", reply_markup=USER_KB)
     else:
         today = datetime.today().date()  # Получаем текущую дату
+        print(today)
         # Находим ближайшую дату
         nearest_event = min(
             (event for event in events if event['due_date'].date() >= today),
@@ -86,8 +88,8 @@ async def send_notifications(bot: Bot):
                 for user in users:
                     try:
                         await bot.send_message(
-                            user[0], \
-                                f"{user[2]} напоминание: Завтра ({event['due_time']}) событие: {event['title']}'"
+                            user['telegram_id'], \
+                                f"Напоминание: Завтра ({event['due_time']}) событие: {event['title']}'"
                         )
                     except Exception as e:
                         print(f"Ошибка отправки уведомления: {e}")

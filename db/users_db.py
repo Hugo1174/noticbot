@@ -65,7 +65,7 @@ class Database:
             await db.commit()
 
     # добавление юзера
-    async def add_user(self, telegram_id, user_name, role, group_id=None):
+    async def add_user(self, telegram_id: str, user_name: str, role: str, group_id=None):
         async with aiosqlite.connect(self.db_name) as db:
             try:
                 await db.execute('''
@@ -74,27 +74,30 @@ class Database:
                              ''', (str(telegram_id), user_name, role, group_id)
                              )
                 await db.commit()
+            except aiosqlite.IntegrityError as e:
+                print(f"IntegrityError: {e}")
+            # Обработка ошибки уникальности, например, пользователь уже существует
             except Exception as e:
                 print(f"Error adding user: {e}")
 
     # удаление пользователя  
-    async def delete_user(self, telegram_id):
+    async def delete_user(self, telegram_id: str):
         async with aiosqlite.connect(self.db_name) as db:
-            await db.execute("DELETE FROM Users WHERE telegram_id = ?", (str(telegram_id),))
+            await db.execute("DELETE FROM Users WHERE telegram_id = ?", (telegram_id,))
             await db.commit()
 
     # получение инф-и о пользователе
-    async def get_user(self, telegram_id):
+    async def get_user(self, telegram_id: str):
         async with aiosqlite.connect(self.db_name) as db:
             cursor = await db.execute("SELECT * FROM Users WHERE telegram_id = ?",
-                                      (str(telegram_id),))
+                                      (telegram_id,))
             return await cursor.fetchone()
     
     # поиск пользователей по группе
-    async def search_user_by_group(self, group_id):
+    async def search_user_by_group(self, group_id: int):
         async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute("SELECT * FROM Users WHERE group_id= ?", \
-                                      (int(group_id),))
+            cursor = await db.execute("SELECT * FROM Users WHERE group_id= ?",
+                                      (group_id,))
             rows = await cursor.fetchall()
         
             #Преобразуем результаты в список словарей
@@ -110,7 +113,7 @@ class Database:
 
 
     # изменяем роль
-    async def change_role(self, role, user_id):
+    async def change_role(self, role: str, user_id: str):
         async with aiosqlite.connect(self.db_name) as db:
             try:
                 await db.execute('''UPDATE Users SET role = ? WHERE telegram_id = ?
@@ -121,7 +124,7 @@ class Database:
                 print(f"Error adding user: {e}")
 
     # изменяем роль
-    async def add_group_id_to_headman(self, h_id, g_id):
+    async def add_group_id_to_headman(self, h_id: int, g_id: int):
         async with aiosqlite.connect(self.db_name) as db:
             try:
                 await db.execute('''UPDATE Users SET group_id = ? WHERE id = ?
@@ -132,19 +135,19 @@ class Database:
                 print(f"Error adding user: {e}")
 
     # создание группы
-    async def add_group(self, faculty, group, id):
+    async def add_group(self, faculty: str, group: str, id: int):
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute('''
                             INSERT INTO Groups(faculty, group_name, headman_id)
                              VALUES(?, ?, ?)
-                             ''', (str(faculty), str(group), id)
+                             ''', (faculty, group, id)
                              )
             await db.commit()
 
     # поиск группы
-    async def search_group(self, faculty, group_name):
+    async def search_group(self, faculty: str, group_name: str):
         async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute("SELECT * FROM Groups WHERE group_name = ? AND faculty = ?", (str(faculty), str(group_name),))
+            cursor = await db.execute("SELECT * FROM Groups WHERE faculty = ? AND group_name = ?", (faculty, group_name))
             return await cursor.fetchone()
         
     # возврат групп    
@@ -154,19 +157,19 @@ class Database:
             return await cursor.fetchone()
 
     # возврат группы    
-    async def return_group(self, id):
+    async def return_group(self, group_id: int):
         async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute("SELECT * FROM Groups WHERE group_id = ?", (int(id), ))
+            cursor = await db.execute("SELECT * FROM Groups WHERE group_id = ?", (group_id, ))
             return await cursor.fetchone()     
         
     # удаление группы    
-    async def delete_group(self, faculty, group_name):
+    async def delete_group(self, faculty: str, group_name: str):
         async with aiosqlite.connect(self.db_name) as db:
-            await db.execute("DELETE FROM Groups WHERE group_name = ? AND faculty = ?", (str(faculty), str(group_name),))
+            await db.execute("DELETE FROM Groups WHERE group_name = ? AND faculty = ?", (group_name, faculty))
             await db.commit()
     
     # добавление события
-    async def add_assignment(self, group_id, title, due_date, description):
+    async def add_assignment(self, group_id: int, title: str, due_date, description: str):
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute('''
                 INSERT INTO Assignments (group_id, title, due_date, description)
@@ -175,10 +178,10 @@ class Database:
             await db.commit()
 
     # возвращает все события группы
-    async def get_asignment(self, group_id):
+    async def get_asignment(self, group_id: int):
         async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute("SELECT * FROM Assignments WHERE group_id= ?", \
-                                      (int(group_id),))
+            cursor = await db.execute("SELECT * FROM Assignments WHERE group_id= ?",
+                                      (group_id,))
             rows = await cursor.fetchall()
         
             #Преобразуем результаты в список словарей

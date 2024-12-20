@@ -143,13 +143,17 @@ async def process_add_group(message : Message, state : FSMContext):
                     f'Отлично!\n{message.from_user.username}, я создал группу!'
                 )
             # добавляем юзера
-            await database.add_user(str(message.from_user.id), message.from_user.username, role)
+            await database.add_user(str(message.from_user.id), str(message.from_user.username), str(role))
             headman_id = await database.get_user(str(message.from_user.id))
             headman_id = headman_id[0]
+            print(headman_id)
             await database.add_group(faculty, user_group, headman_id)
             group_id = await database.search_group(faculty, user_group)
             group_id = group_id[0]
+            print(group_id)
             await database.add_group_id_to_headman(headman_id, group_id)
+            group = await database.return_group(group_id)
+            print(group)
             await message.answer\
                 (
                     'Теперь тебе доступны возможности бота.\n'
@@ -226,7 +230,7 @@ async def process_headman_faculty(message : Message, state : FSMContext):
     else:
         await message.answer('Этого токена нет, введите новый')
     await state.set_state(Registration.token)
-
+'''
 @registration_private_router.message(Registration.group, F.text)
 async def process_group_registration(message : Message, state : FSMContext):    
     # ищем группу в бд
@@ -258,6 +262,7 @@ async def process_group_registration(message : Message, state : FSMContext):
                     reply_markup=HEADMAN_KB
                 )
             
+            
         else: 
             await message.answer\
             (
@@ -274,7 +279,7 @@ async def process_group_registration(message : Message, state : FSMContext):
             
 
     await state.clear()
-
+'''
 
 
 
