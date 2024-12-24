@@ -1,7 +1,6 @@
 import asyncio
 import os # для работы с операционкой
 
-
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommandScopeAllPrivateChats
 
@@ -36,6 +35,9 @@ dp.include_router(admin_private_router)
 dp.include_router(headman_private_router)
 dp.include_router(user_private_router)
 
+
+
+
 # Основная функция для запуска бота
 async def main():
     try:
@@ -48,9 +50,10 @@ async def main():
         await bot.set_my_commands(commands=private, scope=BotCommandScopeAllPrivateChats())
         # Запуск бота с использованием нового метода
         await dp.start_polling(bot)
+        
     finally:
         # Закрытие соединения при завершении работы бота
-        #connection.close()
+        #await database.close()
         print("Соединение с базой данных закрыто.")
 
 if __name__ == '__main__':

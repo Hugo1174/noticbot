@@ -1,4 +1,7 @@
 import asyncio
+import shutil
+import os
+
 from aiogram import Bot, Router
 from aiogram.types import Message
 
@@ -104,18 +107,38 @@ async def nearest_date(message: Message):
     else:
         await message.answer(response, reply_markup=HEADMAN_KB)
 
+source_file = '../db/bot_db.db'  # Путь к исходному файлу
+destination_directory = '~noticbot/logs/'
+if not os.path.exists(destination_directory):
+    os.makedirs(destination_directory)
+
 # Функция для отправки уведомлений
 async def send_notifications(bot: Bot):
+    i = 1
+    message_time = datetime.time(12, 0)  # 12:00
     while True:
-        start = datetime.time(12, 00)  # 12:00
-        end = datetime.time(13, 5)      # 13:05
-
         # Получаем текущее время
         now = datetime.datetime.now().time()
+        if now.hour == message_time.hour and now.minute == message_time.minute:
+            print(f"Сообщение отправлено в {now}")
+            # Проверка существования исходного файла перед копированием
+            if os.path.exists(source_file):
+                try:
+                    # Копирование файла
+                    shutil.copy(source_file, os.path.join(destination_directory, f'bot_db{i}.db'))
+                    print(f'Файл {source_file} успешно скопирован в {destination_directory}')
+                except Exception as e:
+                    print(f'Ошибка при копировании файла: {e}')
+            else:
+                print(f'Исходный файл не найден: {source_file}')
+
+            # Обновление счетчика
+            i += 1 if i < 11 else -10  # Сброс счетчика после 10
+        else:
+            await asyncio.sleep(1)
+            continue
+
         print(now)
-        while (start <= now or now <= end):
-            # Ждем 1 час перед следующей проверкой
-            await asyncio.sleep(3600)
 
         today = datetime.datetime.today().date()
         tomorrow = today + datetime.timedelta(days=1)
@@ -139,3 +162,5 @@ async def send_notifications(bot: Bot):
                         )
                     except Exception as e:
                         print(f"Ошибка отправки уведомления пользователю {user['telegram_id']}: {e}")
+        
+        await asyncio.sleep(86000)
