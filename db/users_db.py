@@ -127,7 +127,7 @@ class Database:
     async def add_group_id_to_headman(self, h_id: int, g_id: int):
         async with aiosqlite.connect(self.db_name) as db:
             try:
-                await db.execute('''UPDATE Users SET group_id = ? WHERE id = ?
+                await db.execute('''UPDATE Users SET group_id = ? WHERE user_id = ?
                              ''', (g_id, h_id)
                              )
                 await db.commit()

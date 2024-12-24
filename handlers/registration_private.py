@@ -167,6 +167,7 @@ async def process_add_group(message : Message, state : FSMContext):
                 'Возможно староста ещё не создал группу. Напиши ему!'
             )
         await state.clear()
+        return
     
     # проверка на старосту
     if group:
@@ -194,6 +195,7 @@ async def process_add_group(message : Message, state : FSMContext):
                 'Начать заново - /start'
             )
         await state.clear()
+        return
 
 
     ''' для старосты '''

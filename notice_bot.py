@@ -41,6 +41,7 @@ async def main():
     try:
         await database.create_database()
         asyncio.create_task(send_notifications(bot))
+        #await send_notifications(bot)
         # удалить меню
         #await bot.delete_my_commands(scope=BotCommandScopeAllPrivateChats())
         # создать меню

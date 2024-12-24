@@ -12,6 +12,14 @@ from db.users_db import Database
 #обработчик
 user_private_router = Router()
 
+# Меню для добавления события
+HEADMAN_KB = reply.get_keyboard(
+        '➕ Добавить дату',
+        '📅 Просмотр всех дат',
+        '⏳ Ближайшая дата',
+        placeholder='выберите действие',
+        sizes=(1,3),
+)
 
 # Меню для добавления события
 USER_KB = reply.get_keyboard(
@@ -27,70 +35,100 @@ db = Database()
 @user_private_router.message(lambda message: message.text == "📅 Просмотр всех дат")
 async def view_all_dates(message: Message):
     user_id = message.from_user.id
-    group_id = await db.get_user(str(user_id))
-    group_id = group_id[4]
+    user_data = await db.get_user(str(user_id))
+    role = user_data[3]
+    group_id = user_data[4]
     group_name = await db.return_group(int(group_id))
     group_name = group_name[2]
     events = await db.get_asignment(int(group_id))
     print(group_id, group_name, events)
+    response = ''
     if not events:
-        await message.answer(f"В группе '{group_name}' событий пока нет.", reply_markup=USER_KB)
+        response = f"В группе '{group_name}' событий пока нет."
     else:
         response = "События:\n"
         for event in events:
             response += ( f"Название: {event['title']},\n"
                           f"Срок: {event['due_date']},\n"
                           f"Описание: {event['description']}\n")
+    if role == 'student':
         await message.answer(response, reply_markup=USER_KB)
+    else:
+        await message.answer(response, reply_markup=HEADMAN_KB)    
 
 # Обработчик ближайшей даты
 @user_private_router.message(lambda message: message.text == "⏳ Ближайшая дата")
 async def nearest_date(message: Message):
     user_id = message.from_user.id
-    group_id = await db.get_user(str(user_id))
-    group_id = group_id[4]
+    user_data = await db.get_user(str(user_id))
+    role = user_data[3]
+    group_id = user_data[4]
     group_name = await db.return_group(int(group_id))
     group_name = group_name[2]
+
+    # Получаем события из базы данных
     events = await db.get_asignment(int(group_id))
+
     print(group_id, group_name, events)
+    
+    response = ''
     if not events:
-        await message.answer(f"В группе '{group_name}' событий пока нет.", reply_markup=USER_KB)
+        response = f"В группе '{group_name}' событий пока нет."
     else:
-        today = datetime.today().date()  # Получаем текущую дату
+        today = datetime.datetime.today().date()  # Получаем текущую дату
         print(today)
+
         # Находим ближайшую дату
-        nearest_event = min(
-            (event for event in events if event['due_date'].date() >= today),
-            default=None,
-            key=lambda e: (e['due_date'].date() - today).days
-        )
+        nearest_event = None
+        min_days_diff = float('inf')  # Инициализируем с большим значением
+
+        for event in events:
+            due_date_str = event['due_date']  # Get due date as a string
+            due_date = datetime.datetime.strptime(due_date_str, '%Y-%m-%d %H:%M:%S').date()
+            
+            if due_date >= today:
+                days_diff = (due_date - today).days
+                if days_diff < min_days_diff:
+                    min_days_diff = days_diff
+                    nearest_event = event
 
         if nearest_event:
-            await message.answer(
-                f"Ближайшая дата в группе: {nearest_event['due_date'].strftime('%Y-%m-%d')}\n"
-                f"Событие: {nearest_event['title']}\n"
-                f"Описание: {nearest_event['description']}",
-                reply_markup=USER_KB
-            )
+            response = f"Ближайшая дата в группе: {nearest_event['due_date']}\n"\
+                       f"Событие: {nearest_event['title']}\n"\
+                       f"Описание: {nearest_event['description']}"
         else:
-            await message.answer(f"Ближайших дат в группе '{group_name}' нет.", reply_markup=USER_KB)
+            response = f"Ближайших дат в группе '{group_name}' нет."
 
+    if role == 'student':
+        await message.answer(response, reply_markup=USER_KB)
+    else:
+        await message.answer(response, reply_markup=HEADMAN_KB)
 
 # Функция для отправки уведомлений
 async def send_notifications(bot: Bot):
     while True:
-        today = datetime.date.today()
+        today = datetime.datetime.today().date()
         tomorrow = today + datetime.timedelta(days=1)
+
+        # Получаем события, запланированные на завтра
         events = await db.get_events_by_date(tomorrow)
+
         for event in events:
-            if event['due_time'].date() == tomorrow: 
+            # Предполагается, что due_time хранится как строка в формате 'YYYY-MM-DD HH:MM:SS'
+            due_time = datetime.datetime.strptime(event['due_date'], '%Y-%m-%d %H:%M:%S').date()
+
+            if due_time == tomorrow: 
+                # Получаем пользователей, связанных с группой события
                 users = await db.search_user_by_group(int(event['group_id']))
+                
                 for user in users:
                     try:
                         await bot.send_message(
-                            user['telegram_id'], \
-                                f"Напоминание: Завтра ({event['due_time']}) событие: {event['title']}'"
+                            user['telegram_id'], 
+                            f"Напоминание: Завтра ({event['due_date']}) событие: {event['title']}"
                         )
                     except Exception as e:
-                        print(f"Ошибка отправки уведомления: {e}")
-        await asyncio.sleep(3600)
+                        print(f"Ошибка отправки уведомления пользователю {user['telegram_id']}: {e}")
+
+        # Ждем 1 час перед следующей проверкой
+        await asyncio.sleep(10)
