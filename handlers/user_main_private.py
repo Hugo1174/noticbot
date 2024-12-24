@@ -107,6 +107,16 @@ async def nearest_date(message: Message):
 # Функция для отправки уведомлений
 async def send_notifications(bot: Bot):
     while True:
+        start = datetime.time(12, 00)  # 12:00
+        end = datetime.time(13, 5)      # 13:05
+
+        # Получаем текущее время
+        now = datetime.datetime.now().time()
+        print(now)
+        while (start <= now or now <= end):
+            # Ждем 1 час перед следующей проверкой
+            await asyncio.sleep(3600)
+
         today = datetime.datetime.today().date()
         tomorrow = today + datetime.timedelta(days=1)
 
@@ -129,6 +139,3 @@ async def send_notifications(bot: Bot):
                         )
                     except Exception as e:
                         print(f"Ошибка отправки уведомления пользователю {user['telegram_id']}: {e}")
-
-        # Ждем 1 час перед следующей проверкой
-        await asyncio.sleep(10)
