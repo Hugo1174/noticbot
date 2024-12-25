@@ -264,6 +264,13 @@ class Database:
 
 
 
+    async def logging(self, i: int):
+        async with aiosqlite.connect(self.db_name) as db:
+            async with aiosqlite.connect(f'logs/bot_db{i}.db') as backup_db:
+                await db.backup(backup_db)
+                print(f'База данных успешно скопирована в bot_db{i}.db')
+
+
 
 
 # добавление
